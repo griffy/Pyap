@@ -60,7 +60,7 @@ def audio_info(uri):
         info['track'] = track
 
     if 'date' in audio_file:
-        info['year'] = audio_file['date']
+        info['year'] = unicode(audio_file['date'])
 
     if 'artist' in audio_file:
         info['artist'] = unicode(" & ".join(audio_file['artist']))
@@ -93,21 +93,21 @@ class Audio(object):
 
         if not kwargs:
             # analyze the track ourselves if no info was given
-            self.update(audio_info(uri))
+            self.update(**audio_info(uri))
 
-    def update(self, audio_info):
-        if 'length' in audio_info:
-            self.length = audio_info['length']
-        if 'track' in audio_info:
-            self.track = audio_info['track']
-        if 'year' in audio_info:
-            self.year = audio_info['year']
-        if 'artist' in audio_info:
-            self.artist = audio_info['artist']
-        if 'title' in audio_info:
-            self.title = audio_info['title']
-        if 'album' in audio_info:
-            self.album = audio_info['album']
+    def update(self, **kwargs):
+        if 'length' in kwargs:
+            self.length = kwargs['length']
+        if 'track' in kwargs:
+            self.track = kwargs['track']
+        if 'year' in kwargs:
+            self.year = kwargs['year']
+        if 'artist' in kwargs:
+            self.artist = kwargs['artist']
+        if 'title' in kwargs:
+            self.title = kwargs['title']
+        if 'album' in kwargs:
+            self.album = kwargs['album']
 
     def is_file(self):
         return self.type == FILE
