@@ -1,6 +1,6 @@
 # Pyap - The Python Audio Player Library
 #
-# Copyright (c) 2011 Letat
+# Copyright (c) 2012 Joel Griffith
 # Copyright (c) 2005 Joe Wreschnig
 # Copyright (c) 2002 David I. Lehn
 # Copyright (c) 2005-2011 the SQLAlchemy authors and contributors
@@ -22,6 +22,25 @@
 
 import re
 import os
+
+class EventGenerator(object):
+    def __init__(self):
+        self.events = {}
+
+    def connect(self, event, callback):
+        if event not in self.events:
+            self.events[event] = Event()
+        self.events[event].add_listener(callback)
+
+    def disconnect(self, event, callback):
+        if event not in self.events:
+            return
+        self.events[event].remove_listener(callback)
+        
+    def emit(self, event, *args, **kwargs):
+        if event not in self.events:
+            return
+        self.events[event](*args, **kwargs)
 
 class Event(object):
     def __init__(self):

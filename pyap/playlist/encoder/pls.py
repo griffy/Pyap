@@ -1,6 +1,6 @@
 # Pyap - The Python Audio Player Library
 #
-# Copyright (c) 2011 Letat
+# Copyright (c) 2012 Joel Griffith
 # Copyright (c) 2005 Joe Wreschnig
 # Copyright (c) 2002 David I. Lehn
 # Copyright (c) 2005-2011 the SQLAlchemy authors and contributors

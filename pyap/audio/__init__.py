@@ -1,6 +1,6 @@
 # Pyap - The Python Audio Player Library
 #
-# Copyright (c) 2011 Letat
+# Copyright (c) 2012 Joel Griffith
 # Copyright (c) 2005 Joe Wreschnig
 # Copyright (c) 2002 David I. Lehn
 # Copyright (c) 2005-2011 the SQLAlchemy authors and contributors
@@ -42,13 +42,16 @@ def audio_info(uri):
     info = {
         'length': -1,
         'track': -1,
-        'year': u''
+        'year': u'',
         'artist': u'',
         'title': unicode(os.path.splitext(os.path.basename(uri))[0]),
         'album': u''
     }
     
     audio_file = File(uri, easy=True)
+    if not audio_file:
+        return info
+
     info['length'] = int(audio_file.info.length)
 
     if 'tracknumber' in audio_file:
@@ -76,24 +79,27 @@ def audio_info(uri):
 
 class Audio(object):
     def __init__(self, uri, **kwargs):
-        self.type = kwargs['type'] if kwargs['type'] else UNKNOWN
-        self.artist = kwargs['artist'] if kwargs['artist'] else u''
-        self.title = kwargs['title'] if kwargs['title'] else u''
-        self.album = kwargs['album'] if kwargs['album'] else u''
-        self.track = int(kwargs['track']) if kwargs['track'] else -1
-        self.length = int(kwargs['length']) if kwargs['length'] else -1
-        self.year = kwargs['year'] if kwargs['year'] else u''
+        self.type = kwargs['type'] if 'type' in kwargs else UNKNOWN
+        self.artist = kwargs['artist'] if 'artist' in kwargs else u''
+        self.title = kwargs['title'] if 'title' in kwargs else u''
+        self.album = kwargs['album'] if 'album' in kwargs else u''
+        self.track = int(kwargs['track']) if 'track' in kwargs else -1
+        self.length = int(kwargs['length']) if 'length' in kwargs else -1
+        self.year = kwargs['year'] if 'year' in kwargs else u''
 
         if self.type == UNKNOWN:
-            self.type = uri_type(self.uri)
+            self.type = uri_type(uri)
 
         self.uri = unicode(uri)
-        if self.type == FILE and uri.find(os.sep):
-            self.uri = unicode(os.path.abspath(uri))
+        if self.is_file():
+            if self.uri.find(os.sep):
+                self.uri = unicode(os.path.abspath(self.uri))
 
-        if not kwargs:
-            # analyze the track ourselves if no info was given
-            self.update(**audio_info(uri))
+            if not kwargs:
+                # analyze the track ourselves if no info was given
+                self.update(**audio_info(self.uri))
+
+        self.player = None
 
     def update(self, **kwargs):
         if 'length' in kwargs:
@@ -108,6 +114,52 @@ class Audio(object):
             self.title = kwargs['title']
         if 'album' in kwargs:
             self.album = kwargs['album']
+
+    def play(self, player=None, on_finish=None):
+        if not player:
+            from pyap.player import Player
+            self.player = Player(on_finish=on_finish)
+        else:
+            self.player = player
+            if finished_func is not None:
+                self.player.connect('audio_finished', on_finish)
+        def cleanup_player(audio):
+            audio.stop()
+        self.player.connect('audio_finished', cleanup_player)
+        self.player.play(self)
+
+    def pause(self):
+        if self.player is not None:
+            self.player.pause()
+
+    def resume(self):
+        if self.player is not None:
+            self.player.resume()
+
+    def stop(self):
+        if self.player is not None:
+            self.player.stop()
+            self.player = None
+
+    def is_playing(self):
+        if self.player is None:
+            return False
+        return self.player.is_playing()
+
+    def is_streaming(self):
+        if self.player is None:
+            return False
+        return self.player.is_streaming()
+
+    def is_paused(self):
+        if self.player is None:
+            return False
+        return self.player.is_paused()
+
+    def is_stopped(self):
+        if self.player is None:
+            return True
+        return self.player.is_stopped()
 
     def is_file(self):
         return self.type == FILE

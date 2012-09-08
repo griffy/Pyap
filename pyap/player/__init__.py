@@ -1,6 +1,6 @@
 # Pyap - The Python Audio Player Library
 #
-# Copyright (c) 2011 Letat
+# Copyright (c) 2012 Joel Griffith
 # Copyright (c) 2005 Joe Wreschnig
 # Copyright (c) 2002 David I. Lehn
 # Copyright (c) 2005-2011 the SQLAlchemy authors and contributors
@@ -22,20 +22,25 @@
 
 import os
 import time
+import threading
 
+import gobject
 import pygst
 pygst.require("0.10")
 import gst
 
-from pyap.util import Event
+from pyap.util import EventGenerator
 
 STREAMING = 0
 STOPPED = 1
 PLAYING = 2
 PAUSED = 3
-    
-class Player(object):
-    def __init__(self):
+
+class Player(EventGenerator):
+    gobject_loop_context = None
+
+    def __init__(self, create_gobject_loop=True, on_finish=None):
+        EventGenerator.__init__(self)
         self._player = gst.element_factory_make('playbin2', 'player')
         fakesink = gst.element_factory_make('fakesink', 'fakesink')
         self._player.set_property('video-sink', fakesink)
@@ -43,17 +48,28 @@ class Player(object):
         bus.add_signal_watch()
         bus.connect('message', self._on_bus_message)
         self.reset()
+        if on_finish is not None:
+            self.connect('audio_finished', on_finish)
+        if create_gobject_loop and self.gobject_loop_context is None:
+            loop = gobject.MainLoop()
+            gobject.threads_init()
+            self.gobject_loop_context = loop.get_context()
 
-    def connect(self, event, func):
-        if event == 'audio_ended':
-            self._finished_func = func
-            
+    def loop_gobject_context(self):
+        # if we have a gobject loop context, force
+        # it to iterate until the audio we're playing
+        # has stopped
+        if self.gobject_loop_context is None:
+            return
+
+        while not self.is_stopped():
+            self.gobject_loop_context.iteration(True)
+    
     def reset(self):
+        # TODO: should all callbacks be cleared?
         self._player.set_state(gst.STATE_NULL)
         self._state = STOPPED
         self._current_audio = None
-        self.set_volume(0.5)
-        self._finished_func = None
         
     def play(self, audio):
         self.play_uri(audio.uri, audio.is_stream())
@@ -73,7 +89,10 @@ class Player(object):
         self._player.set_state(gst.STATE_PLAYING)
         # in this case, current audio will just be the string uri
         self._current_audio = uri
-        
+        # spawn a thread that loops the gobject context so we can
+        # continue to receive events on the bus
+        threading.Thread(group=None, target=self.loop_gobject_context).start()
+    
     def pause(self):
         if (self._state == PLAYING or
             self._state == STREAMING):
@@ -151,6 +170,7 @@ class Player(object):
     def _on_bus_message(self, bus, message):
         if (message.type == gst.MESSAGE_EOS or
             message.type == gst.MESSAGE_ERROR):
+            finished_audio = self.current_audio()
             self.stop()
-            if self._finished_func:
-                self._finished_func(self.current_audio())
+            self.emit('audio_finished', finished_audio)
+            
