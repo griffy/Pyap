@@ -66,3 +66,41 @@ def get_extension(uri):
     if match is not None:
         return match.group(1)
     raise ValueError("No extension found")
+
+extensions = {
+    "audio": {
+        "asf":          set(["asf", "wma"]),
+        "flac":         set(["flac"]),
+        "aac":          set(["mp4", "m4a", "aac"]),
+        "monkeysaudio": set(["ape"]),
+        "mp3":          set(["mp3"]),
+        "musepack":     set(["mpc", "mp+", "mpp"]),
+        "ogg":          set(["ogg", "oga"]),
+        "trueaudio":    set(["tta"]),
+        "wavpack":      set(["wv"]),
+        "optimfrog":    set(["ofr"])
+    },
+    "playlist": {
+        "m3u":          set(["m3u"]),
+        "pls":          set(["pls"])
+    }
+}
+
+def is_audio(ext):
+    for audio_format in extensions["audio"]:
+        if ext in extensions["audio"][audio_format]:
+            return True
+    return False
+
+def is_playlist(ext):
+    for playlist_format in extensions["playlist"]:
+        if ext in extensions["playlist"][playlist_format]:
+            return True
+    return False
+
+def get_format(ext):
+    for file_type in extensions:
+        for format in extensions[file_type]:
+            if ext in extensions[file_type][format]:
+                return format
+    return "unknown"

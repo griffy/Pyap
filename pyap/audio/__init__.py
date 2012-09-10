@@ -24,8 +24,7 @@ import os
 
 from mutagen import File
 
-from pyap.util import get_extension
-from pyap.audio import extensions
+from pyap.util import get_extension, is_audio
 
 FILE = 0
 STREAM = 1
@@ -34,7 +33,7 @@ UNKNOWN = 2
 def uri_type(uri):
     if uri.startswith(r'http://'):
         return STREAM
-    elif get_extension(uri) in extensions.AUDIO:
+    elif is_audio(get_extension(uri)):
         return FILE
     return UNKNOWN
 
