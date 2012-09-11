@@ -33,7 +33,8 @@ UNKNOWN = 2
 def uri_type(uri):
     if uri.startswith(r'http://'):
         return STREAM
-    elif is_audio(get_extension(uri)):
+    extension = get_extension(uri)
+    if extension and is_audio(extension):
         return FILE
     return UNKNOWN
 
@@ -49,7 +50,7 @@ def audio_info(uri):
     
     audio_file = File(uri, easy=True)
     if not audio_file:
-        return info
+        return None
 
     info['length'] = int(audio_file.info.length)
 
@@ -62,21 +63,22 @@ def audio_info(uri):
         info['track'] = track
 
     if 'date' in audio_file:
-        info['year'] = unicode(audio_file['date'])
+        info['year'] = unicode(", ".join(audio_file['date']))
 
     if 'artist' in audio_file:
         info['artist'] = unicode(" & ".join(audio_file['artist']))
     
     if 'title' in audio_file:
-        info['title'] = unicode(" ".join(audio_file['title']))
+        info['title'] = unicode(", ".join(audio_file['title']))
 
     if 'album' in audio_file:
-        info['album'] = unicode(" ".join(audio_file['album']))
+        info['album'] = unicode(", ".join(audio_file['album']))
 
     return info
 
 
 class Audio(object):
+    """ Note: Title attribute will never be blank """
     def __init__(self, uri, **kwargs):
         self.type = kwargs['type'] if 'type' in kwargs else UNKNOWN
         self.artist = kwargs['artist'] if 'artist' in kwargs else u''
@@ -96,7 +98,13 @@ class Audio(object):
 
             if not kwargs:
                 # analyze the track ourselves if no info was given
-                self.update(**audio_info(self.uri))
+                info = audio_info(self.uri)
+                if info is None:
+                    raise Exception("Not an audio file")
+                self.update(**info)
+        elif self.is_stream():
+            if not self.title:
+                self.title = "Stream: %s" % self.uri
 
         self.player = None
 
@@ -114,13 +122,17 @@ class Audio(object):
         if 'album' in kwargs:
             self.album = kwargs['album']
 
+    # FIXME: the on_finish function should only 
+    #        be part of the player until the audio
+    #        file is done playing, and not remain
+    #        on the player (as it does now)
     def play(self, player=None, on_finish=None):
         if not player:
             from pyap.player import Player
             self.player = Player(on_finish=on_finish)
         else:
             self.player = player
-            if finished_func is not None:
+            if on_finish is not None:
                 self.player.connect('audio_finished', on_finish)
         def cleanup_player(audio):
             audio.stop()

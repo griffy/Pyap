@@ -65,7 +65,7 @@ def get_extension(uri):
     match = ext_regex.match(uri)
     if match is not None:
         return match.group(1)
-    raise ValueError("No extension found")
+    return None
 
 extensions = {
     "audio": {
