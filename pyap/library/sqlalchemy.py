@@ -27,8 +27,9 @@ from sqlalchemy.orm import mapper, relationship, sessionmaker
 
 from pyap.audio import Audio
 from pyap.playlist import Playlist
+from pyap.library import Library
 
-def setup(uri):
+def setup_db(uri):
     # TODO: echo should be false
     if uri is None:
         engine = create_engine('sqlite:///:memory:', echo=True)
@@ -73,3 +74,43 @@ def setup(uri):
     )
 
     return sessionmaker(bind=engine)
+
+class SQLAlchemyLibrary(Library):
+    def __init__(self, uri=None):
+        self.session_gen = setup_db(uri)
+
+    def get_audios_where(self, **criteria=None):
+        audios = self.session_gen().query(Audio)
+        if criteria:
+            audios = audios.filter_by(**criteria)
+        return audios.all()
+
+    def get_playlists_where(self, **criteria=None):
+        playlists = self.session_gen().query(Playlist)
+        if criteria:
+            playlists = playlists.filter_by(**criteria)
+        return playlists.all()
+
+    def add_audios(self, audios):
+        session = self.session_gen()
+        session.add_all(audios)
+        session.commit()
+
+    def add_playlists(self, playlists):
+        session = self.session_gen()
+        # TODO: this should automatically add all Audio to the Library
+        #       in the playlist that doesn't already exist
+        # for audio in playlist:
+        #     ...
+        session.add_all(playlists)
+        session.commit()
+
+    def remove_audios(self, audios):
+        session = self.session_gen()
+        session.delete_all(audios)
+        session.commit()
+
+    def remove_playlists(self, playlists):
+        session = self.session_gen()
+        session.delete_all(playlists)
+        session.commit()

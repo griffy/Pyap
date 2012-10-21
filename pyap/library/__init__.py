@@ -20,77 +20,67 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-from pyap.library.db import setup
 from pyap.audio import Audio
-
-Session = None
+from pyap.playlist import Playlist
 
 class Library(object):
+    """ Interface that implementers must satisfy to be
+        considered a Library
+    """
     def __init__(self, uri=None):
-        """ Not specifying a URI results in an in-memory library """
-        global Session
-        if Session is None:
-            Session = setup(uri)
+        """ When no URI is given, the library should be in-memory """
+        raise NotImplementedError()
 
-    def audio_by_index(self, index):
-        return Session().query(Audio).filter_by(id=index).first()
-
-    def audio_by_uri(self, uri):
-        return Session().query(Audio).filter_by(uri=uri).first()
-
-    def all_audio(self):
-        return Session().query(Audio).order_by(Audio.id).all()
-
-    def playlist_by_name(self, name):
-        return Session().query(Playlist).filter_by(name=name).first()
+    def get_audios_where(self, **criteria=None):
+        """ When no criteria is given, all audio should be returned """
+        raise NotImplementedError()
         
+    def get_playlists_where(self, **criteria=None):
+        """ When no criteria is given, all playlists should be returned """
+        raise NotImplementedError()
+
+    def add_audios(self, audios):
+        raise NotImplementedError()
+
+    def add_playlists(self, playlists):
+        raise NotImplementedError()
+
+    def remove_audios(self, audios):
+        raise NotImplementedError()
+
+    def remove_playlists(self, playlists):
+        raise NotImplementedError()
+
+    def generate_playlist(self):
+        return Playlist('default', self.get_audios())
+
+    def get_audios(self):
+        return self.get_audios_where()
+   
+    def get_playlists(self):
+        return self.get_playlists_where()
+
+    def get_first_audio_where(self, **criteria):
+        audios = self.get_audios_where(**criteria)
+        if not audios:
+            return None
+        return audios[0]
+
+    def get_first_playlist_where(self, **criteria):
+        playlists = self.get_playlists_where(**criteria)
+        if not playlists:
+            return None
+        return playlists[0]
+
     def add_audio(self, audio):
-        session = Session()
-        if isinstance(audio, list) and isinstance(audio[0], Audio):
-            session.add_all(audio)
-            session.commit()
-        elif isinstance(audio, Audio):
-            session.add(audio)
-            session.commit()
-
-    def remove_audio(self, audio):
-        session = Session()
-        if isinstance(audio, list) and isinstance(audio[0], Audio):
-            session.delete_all(audio)
-            session.commit()
-        elif isinstance(audio, Audio):
-            session.delete(audio)
-            session.commit()
-
-    def add_audio_by_uri(self, uri):
-        session = Session()
-        if isinstance(uri, list) and isinstance(uri[0], str):
-            session.add_all([Audio(u) for u in uri])
-            session.commit()
-        else:
-            session.add(Audio(uri))
-            session.commit()
-
-    def remove_audio_by_uri(self, uri):
-        session = Session()
-        if isinstance(uri, list) and isinstance(uri[0], str):
-            session.delete_all([Audio(u) for u in uri])
-            session.commit()
-        else:
-            session.delete(Audio(uri))
-            session.commit()
+        self.add_audios([audio])
 
     def add_playlist(self, playlist):
-        session = Session()
-        # TODO: this should automatically add all Audio to the Library
-        #       in the playlist that doesn't already exist
-        #for audio in playlist:
-        #    playlist.audio.append(audio)
-        session.add(playlist)
-        session.commit()
+        self.add_playlists([playlist])
+
+    def remove_audio(self, audio):
+        self.remove_audios([audio])
 
     def remove_playlist(self, playlist):
-        session = Session()
-        session.delete(playlist)
-        session.commit()
+        self.remove_playlists([playlist])
 
