@@ -71,11 +71,11 @@ class Player(EventGenerator):
         self._state = STOPPED
         self._current_audio = None
         
-    def play(self, audio):
-        self.play_uri(audio.uri, audio.is_stream())
+    def play(self, audio, rate=None):
+        self.play_uri(audio.uri, stream=audio.is_stream(), rate=rate)
         self._current_audio = audio
         
-    def play_uri(self, uri, stream=False):
+    def play_uri(self, uri, stream=False, rate=None):
         self.stop()
         if stream:
             self._player.set_property("uri", uri)
@@ -87,6 +87,7 @@ class Player(EventGenerator):
                 self._player.set_property("uri", "file://" + uri)
             self._state = PLAYING
         self._player.set_state(gst.STATE_PLAYING)
+        self.set_position(0, playback_rate=rate)
         # in this case, current audio will just be the string uri
         self._current_audio = uri
         # spawn a thread that loops the gobject context so we can
@@ -122,20 +123,29 @@ class Player(EventGenerator):
     def is_stopped(self):
         return self._state == STOPPED
 
-    def set_position(self, time):
-        if not self.is_streaming():
-            if time <= 0:
-                self._player.seek_simple(gst.FORMAT_TIME,
-                                         gst.SEEK_FLAG_FLUSH,
-                                         0)
-            elif time > self.audio_duration():
-                self._player.seek_simple(gst.FORMAT_TIME,
-                                         gst.SEEK_FLAG_FLUSH,
-                                         self.audio_duration()*1000000000)
-            else:
-                self._player.seek_simple(gst.FORMAT_TIME,
-                                         gst.SEEK_FLAG_FLUSH,
-                                         time*1000000000)
+    def set_position(self, time, playback_rate=None):
+        if self.is_streaming() or self.is_stopped():
+            return
+
+        if time <= 0:
+            pos = 0
+        elif time > self.audio_duration():
+            pos = self.audio_duration() * 1000000000
+        else:
+            pos = time * 1000000000
+
+        if playback_rate is None:
+            self._player.seek_simple(gst.FORMAT_TIME,
+                                     gst.SEEK_FLAG_FLUSH,
+                                     pos)
+        else:
+            self._player.seek(playback_rate, 
+                              gst.FORMAT_TIME,
+                              gst.SEEK_FLAG_FLUSH,
+                              gst.SEEK_TYPE_SET,
+                              pos,
+                              gst.SEEK_TYPE_SET,
+                              self.audio_duration()*1000000000)
 
     def position(self):
         if self.is_streaming():

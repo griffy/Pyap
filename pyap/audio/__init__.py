@@ -126,7 +126,7 @@ class Audio(object):
     #        be part of the player until the audio
     #        file is done playing, and not remain
     #        on the player (as it does now)
-    def play(self, player=None, on_finish=None):
+    def play(self, player=None, rate=None, on_finish=None):
         if not player:
             from pyap.player import Player
             self.player = Player(on_finish=on_finish)
@@ -137,7 +137,7 @@ class Audio(object):
         def cleanup_player(audio):
             audio.stop()
         self.player.connect('audio_finished', cleanup_player)
-        self.player.play(self)
+        self.player.play(self, rate=rate)
 
     def pause(self):
         if self.player is not None:

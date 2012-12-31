@@ -74,7 +74,6 @@ class TestPlayer(unittest.TestCase):
         self.player.set_volume(10)
         self.assertEqual(self.player.get_volume(), 10)
 
-
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TestPlayer))
