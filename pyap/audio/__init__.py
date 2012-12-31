@@ -127,7 +127,10 @@ class Audio(object):
     #        file is done playing, and not remain
     #        on the player (as it does now)
     def play(self, player=None, rate=None, on_finish=None):
-        if not player:
+        if self.player is not None:
+            self.stop()
+
+        if player is None:
             from pyap.player import Player
             self.player = Player(on_finish=on_finish)
         else:
